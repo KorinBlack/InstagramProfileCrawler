@@ -14,6 +14,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from src.config.env import EnvConfig
 from src.utils.logger import Logger
 from src.utils.stats import StatisticsTracker
+from src.images.deduplicator import ImageDeduplicator
+from src.images.optimizer import ImageOptimizer
 
 
 class TestEnvConfig:
@@ -120,7 +122,7 @@ class TestImageOptimizer:
         result = optimizer.optimize_image(str(test_image), str(tmp_path))
         
         assert result.success
-        assert result.path.exists()
+        assert Path(result.path).exists()
 
 
 if __name__ == "__main__":
