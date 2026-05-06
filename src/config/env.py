@@ -23,8 +23,11 @@ def load_env() -> dict:
         'INSTAGRAM_SESSION_ID': '',
         
         # Visual AI
-        'VISUAL_AI_ROUTE': 'http://localhost:11434/api/generate',
-        'VISUAL_AI_MODEL': 'llava',
+        'VISUAL_AI_TYPE': 'ollama',  # ollama or llama.cpp
+        'VISUAL_AI_OLLAMA_HOST': 'http://localhost:11434',
+        'VISUAL_AI_OLLAMA_MODEL': 'llava',
+        'VISUAL_AI_LLAMA_HOST': 'http://localhost:8080',
+        'VISUAL_AI_LLAMA_MODEL': 'gemma4',
         
         # Processing
         'OUTPUT_DIR': './dataset',
@@ -40,6 +43,11 @@ def load_env() -> dict:
         # Filtering
         'FILTERING_ENABLED': 'false',
         'MIN_CONFIDENCE': '0.7',
+        
+        # Test configuration
+        'TEST_USERNAME': '',
+        'TEST_SESSION_ID': '',
+        'TEST_EXAMPLE_IMAGES': '',
     }
     
     # Load environment variables with defaults
@@ -76,6 +84,11 @@ def get_bool(key: str, default: bool) -> bool:
     return value.lower() in ('true', '1', 'yes', 'on')
 
 
+def get_str(key: str, default: str) -> str:
+    """Get string value from environment."""
+    return os.getenv(key, default)
+
+
 class EnvConfig:
     """Central configuration manager from environment variables."""
     
@@ -88,14 +101,44 @@ class EnvConfig:
         return self._env.get('INSTAGRAM_SESSION_ID', '')
     
     @property
-    def visual_ai_route(self) -> str:
-        """Visual AI API route."""
-        return self._env.get('VISUAL_AI_ROUTE', 'http://localhost:11434/api/generate')
+    def test_session_id(self) -> str:
+        """Test session ID."""
+        return self._env.get('TEST_SESSION_ID', '')
     
     @property
-    def visual_ai_model(self) -> str:
-        """Visual AI model name."""
-        return self._env.get('VISUAL_AI_MODEL', 'llava')
+    def test_username(self) -> str:
+        """Test username."""
+        return self._env.get('TEST_USERNAME', '')
+    
+    @property
+    def test_example_images(self) -> str:
+        """Test example images directory."""
+        return self._env.get('TEST_EXAMPLE_IMAGES', '')
+    
+    @property
+    def visual_ai_type(self) -> str:
+        """Visual AI type: ollama or llama.cpp"""
+        return self._env.get('VISUAL_AI_TYPE', 'ollama')
+    
+    @property
+    def visual_ai_ollama_host(self) -> str:
+        """Ollama API host."""
+        return self._env.get('VISUAL_AI_OLLAMA_HOST', 'http://localhost:11434')
+    
+    @property
+    def visual_ai_ollama_model(self) -> str:
+        """Ollama model name."""
+        return self._env.get('VISUAL_AI_OLLAMA_MODEL', 'llava')
+    
+    @property
+    def visual_ai_llama_host(self) -> str:
+        """llama.cpp API host."""
+        return self._env.get('VISUAL_AI_LLAMA_HOST', 'http://localhost:8080')
+    
+    @property
+    def visual_ai_llama_model(self) -> str:
+        """llama.cpp model name."""
+        return self._env.get('VISUAL_AI_LLAMA_MODEL', 'gemma4')
     
     @property
     def output_dir(self) -> str:
@@ -154,8 +197,8 @@ class EnvConfig:
         if not self.instagram_session_id:
             errors.append("INSTAGRAM_SESSION_ID is not set")
         
-        if not self.visual_ai_route:
-            errors.append("VISUAL_AI_ROUTE is not set")
+        if self.visual_ai_type not in ['ollama', 'llama.cpp']:
+            errors.append(f"Invalid VISUAL_AI_TYPE: {self.visual_ai_type}")  
         
         if not self.output_dir:
             errors.append("OUTPUT_DIR is not set")

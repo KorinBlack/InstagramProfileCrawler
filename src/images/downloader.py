@@ -116,11 +116,10 @@ class DownloadManager:
 class ImageDownloader:
     """Handles downloading and processing images from Instagram."""
     
-    def __init__(self, output_dir: str, deduplication: bool = True):
+    def __init__(self, output_dir: str):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.downloader = DownloadManager()
-        self.deduplicator = ImageDeduplicator() if deduplication else None
     
     def download_image(self, url: str, media_id: str, caption: str = "") -> DownloadResult:
         """
