@@ -1,0 +1,28 @@
+# Project Configuration
+
+profile:
+  username: "instagram_username"  # Change this to target profile
+  max_posts: 100
+  filter_low_quality: true
+  exclude_hashtags:
+    - "#sponsored"
+    - "#ad"
+    - "#promotion"
+
+output:
+  format: "json"  # text, json, or pairs
+  include_metadata: true
+  include_captions: true
+
+visual_ai:
+  enabled: true
+  model: "llava"
+  route: "http://localhost:11434/api/generate"
+  generate_captions: true
+  filter_images: true
+
+processing:
+  optimize_images: true
+  target_size_mb: 5
+  deduplicate: true
+  rate_limit: 1

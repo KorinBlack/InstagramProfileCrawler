@@ -1,0 +1,125 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "instagram-profile-crawler"
+version = "0.1.0"
+description = "Create optimized image datasets from Instagram profiles for LoRA training"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "InstagramProfileCrawler", email = "dev@example.com" }
+]
+maintainers = [
+    { name = "InstagramProfileCrawler", email = "dev@example.com" }
+]
+keywords = [
+    "instagram",
+    "lora",
+    "dataset",
+    "scraping",
+    "ai",
+    "machine-learning",
+    "playwright",
+    "ollama"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Internet :: WWW/HTTP :: Browsers"
+]
+dependencies = [
+    "playwright>=1.40.0",
+    "pillow>=10.0.0",
+    "python-dotenv>=1.0.0",
+    "rich>=13.0.0",
+    "ollama>=0.6.0",
+    "pyyaml>=6.0.0",
+    "requests>=2.31.0",
+    "urllib3>=2.0.0",
+    "numpy>=1.24.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "mypy>=1.0.0",
+    "ruff>=0.1.0"
+]
+
+[project.scripts]
+instagram-crawler = "src.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/instagram-profile-crawler"
+Documentation = "https://github.com/instagram-profile-crawler#readme"
+Repository = "https://github.com/instagram-profile-crawler"
+Issues = "https://github.com/instagram-profile-crawler/issues"
+
+[tool.setuptools]
+packages = ["src", "src.instagram", "src.images", "src.filtering", "src.config", "src.utils"]
+
+[tool.setuptools.package-data]
+"*" = ["*.md", "*.yaml", "*.yml", "*.txt"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+    | \.venv
+    | build
+    | dist
+    | config
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+skip = ["config", "build", "dist", ".venv"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+show_error_codes = true
+exclude = ["config/", "tests/"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # flake8
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+]
+ignore = [
+    "E501", # line too long (black handles this)
+    "B008", # do not perform function calls in argument defaults
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
