@@ -156,25 +156,21 @@ class ImageDownloader:
         
         return result
     
-    def download_images_batch(self, images: List[Dict[str, Any]], 
+    def download_images_batch(self, media_urls: List[str], 
                              max_concurrent: int = 3) -> Generator[DownloadResult, None, None]:
         """
         Download multiple images in batches.
         
         Args:
-            images: List of image data dictionaries
+            media_urls: List of media URLs
             max_concurrent: Maximum concurrent downloads
             
         Yields:
             DownloadResult for each image
         """
-        for image in images:
-            url = image.get('url')
-            media_id = image.get('id', '')
-            caption = image.get('caption', '')
-            
-            if url:
-                result = self.download_image(url, media_id, caption)
+        for media_url in media_urls:            
+            if media_url:
+                result = self.download_image(media_url, "", "")
                 yield result
     
     def download_from_media_item(self, media_item) -> DownloadResult:
