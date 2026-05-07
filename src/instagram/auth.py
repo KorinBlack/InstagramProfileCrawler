@@ -197,7 +197,7 @@ class SessionManager:
 
 
                 browser.close()
-            print(f"✓ Profile scraped: {user_data}")
+            print(f"✓ Profile scraped: {user_data.get('username', '')}")
             return user_data
             
         except Exception as e:

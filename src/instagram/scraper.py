@@ -41,7 +41,7 @@ class InstagramScraper:
         self.session_manager = session_manager
         self.rate_limit_delay = 1  # seconds between requests
     
-    def scrape_profile(self, username: str, max_posts: int = 100) -> Optional[ProfileData]:
+    def scrape_profile(self, username: str, max_posts: int = 100):
         """
         Scrape complete profile data.
         
