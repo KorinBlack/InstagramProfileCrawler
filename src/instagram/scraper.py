@@ -149,7 +149,6 @@ class InstagramScraper:
             content = re.compile(regex).findall(page.text())[0]
             data = json.loads(content)
             xdt_api__v1__feed__reels_media__connection = data.get('require', {})[0][3][0].get('__bbox', {}).get('require', {})[0][3][1].get('__bbox', {}).get('result').get('data', {}).get('xdt_api__v1__feed__reels_media__connection', {})
-            print(f"Extracting story {id} with {xdt_api__v1__feed__reels_media__connection} items")
             edges = xdt_api__v1__feed__reels_media__connection.get('edges', [])[0]
             items = edges.get('node', {}).get('items', [])
             for item in items:

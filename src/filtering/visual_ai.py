@@ -206,13 +206,14 @@ class VisualAI:
             )
     
     def generate_caption(self, image_path: str, 
-                        include_negative: bool = True) -> VisualAIResult:
+                        include_negative: bool = True, user_prompt: str = "") -> VisualAIResult:
         """
         Generate caption for image using Visual AI.
         
         Args:
             image_path: Path to image
             include_negative: Whether to generate negative prompt
+            user_prompt: Custom prompt for caption generation
             
         Returns:
             VisualAIResult with captions
@@ -232,17 +233,18 @@ class VisualAI:
                 base64_image = base64.b64encode(img_byte_arr.read()).decode('utf-8')
             
             # Generate main caption
-            prompt = f"""
-            Generate a detailed caption for this image suitable for LoRA training.
-            
-            Requirements:
-            - 1-2 sentences describing the main subject and composition
-            - Include key visual elements, colors, lighting
-            - Natural language, not tags
-            - Max 100 words
-            
-            Return ONLY the caption text, nothing else.
-            """
+            if not user_prompt:
+                user_prompt = f"""
+                Generate a detailed caption for this image suitable for LoRA training.
+                
+                Requirements:
+                - 1-2 sentences describing the main subject and composition
+                - Include key visual elements, colors, lighting
+                - Natural language, not tags
+                - Max 100 words
+                
+                Return ONLY the caption text, nothing else.
+                """
             
             if self.use_ollama and self.client:
                 # Ollama method
@@ -260,6 +262,10 @@ class VisualAI:
                     json={
                         "model": self.model,
                         "messages": [
+                            {
+                                "role": "system",
+                                "content": SYSTEM_PROMPT
+                            },
                             {
                                 "role": "user",
                                 "content": [
@@ -302,6 +308,10 @@ class VisualAI:
                         json={
                             "model": self.model,
                             "messages": [
+                                {
+                                "role": "system",
+                                "content": SYSTEM_PROMPT
+                                },
                                 {
                                     "role": "user",
                                     "content": [
@@ -398,19 +408,12 @@ class VisualAI:
         
         # Simple tag extraction based on common patterns
         words = text.lower().split()
-        common_nouns = [
-            'person', 'people', 'portrait', 'landscape', 'nature',
-            'building', 'architecture', 'food', 'animal', 'pet',
-            'car', 'vehicle', 'fashion', 'clothing', 'technology',
-            'product', 'object', 'scene', 'environment'
-        ]
         
         tags = []
         for word in words:
             if len(word) > 4 and word not in ['the', 'and', 'or', 'but', 'is', 'are']:
                 # Check if it might be a tag
-                if any(noun in word for noun in common_nouns):
-                    tags.append(word)
+                tags.append(word)
         
         return list(set(tags))[:10]  # Limit to 10 tags
 

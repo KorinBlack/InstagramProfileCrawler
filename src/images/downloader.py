@@ -168,10 +168,12 @@ class ImageDownloader:
         Yields:
             DownloadResult for each image
         """
+        counter = 0
         for media_url in media_urls:            
             if media_url:
-                result = self.download_image(media_url, "", "")
+                result = self.download_image(media_url, str(counter), "")
                 yield result
+            counter += 1
     
     def download_from_media_item(self, media_item) -> DownloadResult:
         """

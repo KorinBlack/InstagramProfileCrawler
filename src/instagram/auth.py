@@ -181,7 +181,7 @@ class SessionManager:
             with sync_playwright() as playwright:
                 if not self.auth.session_check(playwright):
                     raise Exception("Failed to initialize Instagram session")
-                context, browser = self.auth._preflight_config_proxyed(playwright)
+                context, browser = self.auth._preflight_config(playwright)
 
                 userid_req = context.request.get(
                             f'https://i.instagram.com/api/v1/users/web_profile_info/?username={username}',
