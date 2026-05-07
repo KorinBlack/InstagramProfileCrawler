@@ -52,7 +52,8 @@ class InstagramAuth:
                     user_agent=self.config.user_agent,
                     viewport={'width': 1920, 'height': 1080},
                     locale='en-US',
-                    timezone_id='America/New_York'
+                    timezone_id='America/New_York',
+                    ignore_https_errors=True
                 )
             context.add_cookies([
                     {

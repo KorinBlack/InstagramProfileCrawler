@@ -182,4 +182,5 @@ cython_debug/
 
 # Test files
 example_dataset/*
+test_dataset/*
 test_full_workflow.py
