@@ -118,70 +118,51 @@ class InstagramScraper:
         
         try:
             with sync_playwright() as playwright:
-                context, browser = self.session_manager.auth._preflight_config_proxyed(playwright)
+                context, browser = self.session_manager.auth._preflight_config(playwright)
                 if not context:
                     return stories
                 
                 page = context.new_page()
-                page.goto(f"https://www.instagram.com/{username}/highlight-reel/", wait_until="networkidle")
-                
-                story_elements = page.locator('div._1107b9 div._1107b9 div._1107b9')
-                
-                for story in story_elements.all():
-                    try:
-                        story_data = self._extract_story(story)
-                        if story_data:
-                            stories.append(story_data)
-                    except Exception as e:
-                        print(f"⚠ Failed to extract story: {e}")
-                
-                page.close()
-                browser.close()
+                page.goto(f"https://www.instagram.com/{username}/", wait_until="networkidle")
+                story_elements = re.compile(r"\/stories\/highlights\/(\d*)\/").findall(page.content())
+                print(f"Found {len(story_elements)} story highlights")
+
+                                            
+                for id in story_elements:
+                    story = self._extract_story(id, context)
+                    if story:
+                        stories.append(story)
             
         except Exception as e:
             print(f"✗ Failed to scrape stories: {e}")
         
         return stories
     
-    def _extract_story(self, element) -> Optional[Story]:
+    def _extract_story(self, id: str, context):
         """Extract data from a story highlight."""
-        try:
-            title = element.locator('div._1107b9 div._1107b9 div._1107b9 div._1107b9').inner_text().strip()
-            if not title:
-                return None
-            
-            cover_url = element.locator('img').get_attribute('src') or ""
-            
-            # Get media count
-            media_count_text = element.locator('div._1107b9 div._1107b9 div._1107b9 div._1107b9').inner_text()
-            media_count = self._extract_number(media_count_text)
-            
-            # Extract media items
-            items = []
-            media_items = element.locator('div._1107b9 div._1107b9 div._1107b9 div._1107b9 div._1107b9')
-            
-            for item in media_items.all():
-                try:
-                    media_url = item.locator('img').get_attribute('src') or ""
-                    if media_url:
-                        items.append(MediaItem(
-                            id=f"{title}_{hashlib.md5(media_url.encode()).hexdigest()[:8]}",
-                            type='story',
-                            url=media_url,
-                            thumbnail_url=media_url,
-                            timestamp=datetime.now().isoformat()
-                        ))
-                except:
-                    continue
-            
-            return Story(
-                id=f"highlight_{hashlib.md5(title.encode()).hexdigest()[:8]}",
-                title=title,
-                media_count=media_count,
-                cover_media=cover_url,
-                items=items
-            )
+        urls = []
+        try:            
+            page = context.new_page().goto(f"https://www.instagram.com/stories/highlights/{id}/", wait_until="networkidle")
+            content_bytes = re.compile(r'<script type="application\/json"  data-content-len="(.*)" data-sjs>.*require.*xdt_api__v1__feed__reels_media__connection').findall(page.text())[0]
+
+            regex = r'data-content-len="' + content_bytes + r'" data-sjs>(.{' + content_bytes + r'})'
+            content = re.compile(regex).findall(page.text())[0]
+            data = json.loads(content)
+            xdt_api__v1__feed__reels_media__connection = data.get('require', {})[0][3][0].get('__bbox', {}).get('require', {})[0][3][1].get('__bbox', {}).get('result').get('data', {}).get('xdt_api__v1__feed__reels_media__connection', {})
+            print(f"Extracting story {id} with {xdt_api__v1__feed__reels_media__connection} items")
+            edges = xdt_api__v1__feed__reels_media__connection.get('edges', [])[0]
+            items = edges.get('node', {}).get('items', [])
+            for item in items:
+                if item.get('media_type') == 1:  # Image
+                    urls.append(item.get('image_versions2', {}).get('candidates', [{}])[0].get('url', ''))
+                elif item.get('media_type') == 8:  # Carousel
+                    for carousel_item in item.get('carousel_media', []):
+                        urls.append(carousel_item.get('image_versions2', {}).get('candidates', [{}])[0].get('url', ''))
+
+            return urls
             
         except Exception as e:
             print(f"⚠ Error extracting story: {e}")
-            return None
+            import traceback
+            traceback.print_exc()
+            return urls
