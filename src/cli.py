@@ -162,35 +162,32 @@ def process_profile(username: str,
             return {"success": False, "error": "Failed to scrape profile"}
         
         stats.record_profile()
-        
         # Collect all media items
         media_items = []
-        for post in profile_data.posts:
+        for post in profile_data['posts']:
             media_items.append({
-                'id': post.id,
+                'id': post['id'],
                 'type': 'post',
-                'url': post.thumbnail_url,
-                'caption': post.caption
+                'caption': post['caption']
             })
         
-        for story in profile_data.stories:
+        for story in profile_data['stories']:
             for item in story.items:
                 media_items.append({
                     'id': item.id,
                     'type': 'story',
-                    'url': item.url,
                     'caption': item.caption
                 })
         
-        stats.record_image(len(media_items))
+        stats.record_image(len(profile_data['image_urls']))
         
         if not media_items:
             return {"success": False, "error": "No media items found"}
         
         # Step 2: Download images
-        logger.info(f"Downloading {len(media_items)} images...")
+        logger.info(f"Downloading {len(profile_data['image_urls'])} images...")
         
-        for result in downloader.download_images_batch(media_items):
+        for result in downloader.download_images_batch(profile_data['image_urls']):
             if result.success:
                 stats.record_download(True, result.size_bytes, result.duration_ms)
             else:
@@ -256,17 +253,16 @@ def process_profile(username: str,
         return {
             "success": True,
             "username": username,
-            "posts": len(profile_data.posts),
-            "stories": len(profile_data.stories),
-            "images": stats.unique_images,
+            "posts": len(profile_data['posts']),
+            "stories": len(profile_data['stories']),
+            "images": len(profile_data['image_urls']),
             "stats": stats.get_summary()
         }
         
     except Exception as e:
         logger.error(f"Failed to process profile: {e}")
         return {"success": False, "error": str(e)}
-    finally:
-        session_manager.auth.close()
+
 
 
 def process_batch(batch_file: str) -> dict:

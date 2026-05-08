@@ -2,6 +2,7 @@
 Instagram authentication and session management.
 """
 
+from pydantic import config
 import os
 from typing import Optional, Dict, Any
 from dataclasses import dataclass, field
@@ -145,21 +146,14 @@ class InstagramAuth:
             import traceback
             traceback.print_exc()
             return False
-        
-
-    def close(self):        
-        """Close browser and context."""
-        if self.browser:
-            self.browser.close()
-    
-
 
 
 class SessionManager:
     """Manages Instagram session lifecycle."""
     
     def __init__(self, session_id: str = ""):
-        self.session_id = session_id
+        load_dotenv()
+        self.session_id = session_id or os.getenv('INSTAGRAM_SESSION_ID', '')
         self.auth: Optional[InstagramAuth] = None
         self.auth = InstagramAuth(session_id=self.session_id)
         with sync_playwright() as playwright:

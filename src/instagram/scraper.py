@@ -64,19 +64,19 @@ class InstagramScraper:
         
         # Scrape posts
         print(f"📸 Scraping posts (max: {max_posts})...")
-        image_urls = self._scrape_posts(username, max_posts)
+        image_urls, posts = self._scrape_posts(username, max_posts)
         if not image_urls:
             print(f"✗ Failed to scrape posts  {username}")
         profile_data['image_urls'] = image_urls
-        
+        profile_data['posts'] = posts
         # Scrape stories
         print(f"⭐ Scraping stories...")
         stories = self._scrape_stories(username)
         profile_data['stories'] = stories
         
-        print(f"✓ Profile scraped successfully!")
-        print(f"  Posts: {len(image_urls)}")
-        print(f"  Stories: {len(stories)}")
+        #print(f"✓ Profile scraped successfully!")
+        #print(f"  Posts: {len(posts)}")
+        #print(f"  Stories: {len(stories)}")
         
         return profile_data
     
@@ -106,7 +106,6 @@ class InstagramScraper:
                             return { error: e.toString() };
                         }
                     }''', username)
-                    print(result)
                     if result.get('status') == 200:
                         import json
                         feed = json.loads(result['text'])
@@ -117,18 +116,19 @@ class InstagramScraper:
                 if not feed:
                     print(f"✗ Failed to get feed data for {username}")
                     return None
-            for element in feed.get('items', []):
+            items = feed.get('items', [])
+            for element in items:                    
                 if element.get('media_type') == 1:  # Image
                     image_urls.append(self._extract_url(element))
                 elif element.get('media_type') == 8:  # Carousel
                     for carousel_item in element.get('carousel_media', []):
                         image_urls.append(self._extract_url(carousel_item))
-            return image_urls
+            return image_urls, items
                 
                 
         except Exception as e:
             print(f"✗ Failed to scrape posts: {e}")
-            return image_urls
+            return image_urls, None
     
     def _extract_url(self, element) -> str:
         """Extract URL from a single element."""
