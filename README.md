@@ -52,6 +52,8 @@ python -m playwright install
 
 # Run with default settings
 instagram-crawler username
+# Or run via main.py directly
+python main.py username
 ```
 
 ## Configuration
@@ -82,6 +84,7 @@ CAPTION_PAIRS_FORMAT=json
 # Image Filtering
 FILTERING_ENABLED=true
 MIN_CONFIDENCE=0.7
+FILTERING_PROMPT="keep only images of beautifull backgounds and nature, exclude people. (This is an example guideline that will be used by the visual model to filter out images, edit it before use)"
 ```
 
 ### YAML Configuration (config/settings.yaml)
@@ -198,7 +201,11 @@ Supported models via Ollama:
 - **llava** - General vision-language model (recommended)
 - **babyllama** - Lightweight vision model
 - **mistral** - Advanced reasoning with vision
-- **gemma** - Google's vision-capable model
+
+Supported models via llama.cpp:
+
+- Any HuggingFace GGUF Vision model (e.g., LLaVA, Gemma, Qwen-VL)
+Note: download mmproj file for your model from HuggingFace GGUF models for best results, run the model with --mmproj parameter 
 
 ## Project Structure
 

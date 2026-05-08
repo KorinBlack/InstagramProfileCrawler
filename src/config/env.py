@@ -43,6 +43,7 @@ def load_env() -> dict:
         # Filtering
         'FILTERING_ENABLED': 'false',
         'MIN_CONFIDENCE': '0.7',
+        'FILTERING_PROMPT': '',
         
         # Test configuration
         'TEST_USERNAME': '',
@@ -184,6 +185,11 @@ class EnvConfig:
     def min_confidence(self) -> float:
         """Minimum confidence threshold for filtering."""
         return get_float('MIN_CONFIDENCE', 0.7)
+    
+    @property
+    def filtering_prompt(self) -> str:
+        """Prompt used for filtering images."""
+        return self._env.get('FILTERING_PROMPT', '')
     
     def validate(self) -> list:
         """

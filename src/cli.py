@@ -4,18 +4,19 @@ CLI module - Command-line interface for the application.
 
 import argparse
 import sys
+import os
 from typing import List, Optional
 from pathlib import Path
 
-from ..instagram.auth import SessionManager
-from ..instagram.scraper import InstagramScraper
-from ..images.downloader import ImageDownloader
-from ..images.optimizer import ImageOptimizer
-from ..images.deduplicator import ImageDeduplicator
-from ..filtering.visual_ai import VisualAI, CaptionGenerator
-from ..config.env import EnvConfig
-from ..utils.logger import Logger
-from ..utils.stats import StatisticsTracker
+from .instagram.auth import SessionManager
+from .instagram.scraper import InstagramScraper
+from .images.downloader import ImageDownloader
+from .images.optimizer import ImageOptimizer
+from .images.deduplicator import ImageDeduplicator
+from .filtering.visual_ai import VisualAI, CaptionGenerator
+from .config.env import EnvConfig
+from .utils.logger import Logger
+from .utils.stats import StatisticsTracker
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -138,13 +139,21 @@ def process_profile(username: str,
     
     logger.print_header(f"Scraping Profile", f"@{username}")
     
+    config = EnvConfig()
+    
     # Initialize components
     session_manager = SessionManager()
     scraper = InstagramScraper(session_manager)
     downloader = ImageDownloader(output_dir)
     optimizer = ImageOptimizer() if optimize else None
     deduplicator = ImageDeduplicator() if deduplicate else None
-    visual_ai = VisualAI() if filter_images or generate_captions else None
+    
+    use_ollama = config.visual_ai_type == 'ollama'
+    visual_ai = VisualAI(
+        host=config.visual_ai_ollama_host if use_ollama else config.visual_ai_llama_host,
+        model=config.visual_ai_ollama_model if use_ollama else config.visual_ai_llama_model,
+        use_ollama=use_ollama
+    ) if filter_images or generate_captions else None
     
     try:
         # Step 1: Scrape profile
@@ -208,27 +217,31 @@ def process_profile(username: str,
         # Step 5: Filter images
         if filter_images and visual_ai:
             logger.info("Filtering images...")
+            config = EnvConfig()
             image_files = list(Path(output_dir).glob("*.jpg")) + list(Path(output_dir).glob("*.jpeg"))
             
             for image_path in image_files:
-                result = visual_ai.filter_image(str(image_path))
+                result = visual_ai.filter_image(str(image_path), config.filtering_prompt)
                 if result.success and result.filtered:
                     stats.record_processing(True, filtered=True)
-                    # Could add logic to delete filtered images here
+                    try:
+                        os.remove(image_path)
+                    except Exception as e:
+                        logger.error(f"Error deleting file {image_path}: {e}")
+                    logger.info(f"  Filtered: {Path(image_path).name}")
         
         # Step 6: Generate captions
         if generate_captions and visual_ai:
             logger.info("Generating captions...")
+            image_files = list(Path(output_dir).glob("*.jpg")) + list(Path(output_dir).glob("*.jpeg"))
             
             if caption_format == "pairs":
-                for result in visual_ai.generate_caption_pairs(
-                    list(Path(output_dir).glob("*.jpg"))[0] if Path(output_dir).glob("*.jpg") else "",
-                    output_dir
-                ):
+                caption_generator = CaptionGenerator(visual_ai, batch_size=1)
+                caption_results = caption_generator.generate_all([str(f) for f in image_files], output_dir)
+                for _ in caption_results:
                     stats.record_caption(True)
             else:
                 # Simple caption generation
-                image_files = list(Path(output_dir).glob("*.jpg")) + list(Path(output_dir).glob("*.jpeg"))
                 for image_path in image_files:
                     result = visual_ai.generate_caption(str(image_path))
                     if result.success:
