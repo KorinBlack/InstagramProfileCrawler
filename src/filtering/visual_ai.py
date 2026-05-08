@@ -245,7 +245,7 @@ class VisualAI:
                 
                 Return ONLY the caption text, nothing else.
                 """
-            
+            prompt = user_prompt
             if self.use_ollama and self.client:
                 # Ollama method
                 response = self.client.generate(
@@ -385,7 +385,7 @@ class VisualAI:
             }
             
             # Save as JSON
-            json_file = output_path / f"{image_name}_{timestamp}.json"
+            json_file = output_path / f"{image_name}.json"
             with open(json_file, 'w', encoding='utf-8') as f:
                 json.dump(caption_data, f, indent=2, ensure_ascii=False)
             
@@ -460,3 +460,5 @@ class CaptionGenerator:
                 results.append(result)
         
         return results
+
+
