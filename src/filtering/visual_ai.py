@@ -132,7 +132,7 @@ class VisualAI:
             - Text-heavy images
             - Duplicate-looking images
             - Non-photographic content (e.g. memes, collages)
-            - Irrelevant content based on user prompt: {user_prompt}
+            - Irrelevant content based on this guideline: {user_prompt}
             """
             
             if self.use_ollama and self.client:
