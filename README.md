@@ -52,8 +52,6 @@ python -m playwright install
 
 # Run with default settings
 instagram-crawler username
-# Or run via main.py directly
-python main.py username
 ```
 
 ## Configuration
