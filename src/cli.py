@@ -172,22 +172,26 @@ def process_profile(username: str,
             })
         
         for story in profile_data['stories']:
-            for item in story:
-                media_items.append({
-                    'id': item.get("id"),
-                    'type': 'story',
-                    'caption': item.get("caption")
-                })
+            media_items.append({
+                'id': story.get("id"),
+                'title': story.get("title"),
+                'type': 'story',
+                'caption': story.get("caption")
+            })
         
-        stats.record_image(len(profile_data['image_urls']))
+        
         
         if not media_items:
             return {"success": False, "error": "No media items found"}
         
         # Step 2: Download images
-        logger.info(f"Downloading {len(profile_data['image_urls'])} images...")
+        all_image_urls = []
+        all_image_urls.extend(profile_data['image_urls'])
+        all_image_urls.extend(profile_data['stories_urls'])
+        stats.record_image(len(all_image_urls))
+        logger.info(f"Downloading {len(all_image_urls)} images...")
         
-        for result in downloader.download_images_batch(profile_data['image_urls']):
+        for result in downloader.download_images_batch(all_image_urls):
             if result.success:
                 stats.record_download(True, result.size_bytes, result.duration_ms)
             else:
@@ -255,7 +259,7 @@ def process_profile(username: str,
             "username": username,
             "posts": len(profile_data['posts']),
             "stories": len(profile_data['stories']),
-            "images": len(profile_data['image_urls']),
+            "images": len(all_image_urls),
             "stats": stats.get_summary()
         }
         

@@ -71,7 +71,8 @@ class InstagramScraper:
         profile_data['posts'] = posts
         # Scrape stories
         print(f"⭐ Scraping stories...")
-        stories = self._scrape_stories(username)
+        stories_urls, stories = self._scrape_stories(username)
+        profile_data['stories_urls'] = stories_urls
         profile_data['stories'] = stories
         
         #print(f"✓ Profile scraped successfully!")
