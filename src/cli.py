@@ -172,11 +172,11 @@ def process_profile(username: str,
             })
         
         for story in profile_data['stories']:
-            for item in story.items:
+            for item in story:
                 media_items.append({
-                    'id': item.id,
+                    'id': item.get("id"),
                     'type': 'story',
-                    'caption': item.caption
+                    'caption': item.get("caption")
                 })
         
         stats.record_image(len(profile_data['image_urls']))
@@ -194,7 +194,7 @@ def process_profile(username: str,
                 stats.record_download(False, 0, 0)
         
         # Step 3: Deduplicate
-        if deduplicate and len(media_items) > 10:
+        if deduplicate:
             logger.info("Deduplicating images...")
             duplicates = deduplicator.find_duplicates(output_dir)
             stats.record_processing(len(duplicates), is_duplicate=True)

@@ -138,12 +138,13 @@ class InstagramScraper:
     def _scrape_stories(self, username: str) -> List[Story]:
         """Scrape story highlights."""
         stories = []
+        stories_urls = []
         
         try:
             with sync_playwright() as playwright:
                 context, browser = self.session_manager.auth._preflight_config(playwright)
                 if not context:
-                    return stories
+                    return stories_urls, stories
                 
                 page = context.new_page()
                 page.goto(f"https://www.instagram.com/{username}/", wait_until="networkidle")
@@ -152,18 +153,21 @@ class InstagramScraper:
 
                                             
                 for id in story_elements:
-                    story = self._extract_story(id, context)
+                    story_url, story = self._extract_story_url(id, context)
+                    if story_url:
+                        stories_urls.append(story_url)
                     if story:
                         stories.append(story)
             
         except Exception as e:
             print(f"✗ Failed to scrape stories: {e}")
         
-        return stories
+        return stories_urls, stories
     
-    def _extract_story(self, id: str, context):
+    def _extract_story_url(self, id: str, context):
         """Extract data from a story highlight."""
         urls = []
+        nodes = []
         try:            
             page = context.new_page().goto(f"https://www.instagram.com/stories/highlights/{id}/", wait_until="networkidle")
             content_bytes = re.compile(r'<script type="application\/json"  data-content-len="(.*)" data-sjs>.*require.*xdt_api__v1__feed__reels_media__connection').findall(page.text())[0]
@@ -173,7 +177,9 @@ class InstagramScraper:
             data = json.loads(content)
             xdt_api__v1__feed__reels_media__connection = data.get('require', {})[0][3][0].get('__bbox', {}).get('require', {})[0][3][1].get('__bbox', {}).get('result').get('data', {}).get('xdt_api__v1__feed__reels_media__connection', {})
             edges = xdt_api__v1__feed__reels_media__connection.get('edges', [])[0]
-            items = edges.get('node', {}).get('items', [])
+            nodes = edges.get('node', {})
+            items = nodes.get('items', [])
+            
             for item in items:
                 if item.get('media_type') == 1:  # Image
                     urls.append(item.get('image_versions2', {}).get('candidates', [{}])[0].get('url', ''))
@@ -181,10 +187,10 @@ class InstagramScraper:
                     for carousel_item in item.get('carousel_media', []):
                         urls.append(carousel_item.get('image_versions2', {}).get('candidates', [{}])[0].get('url', ''))
 
-            return urls
+            return urls, nodes
             
         except Exception as e:
             print(f"⚠ Error extracting story: {e}")
             import traceback
             traceback.print_exc()
-            return urls
+            return urls, None
