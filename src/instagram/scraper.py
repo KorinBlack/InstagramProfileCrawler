@@ -85,11 +85,34 @@ class InstagramScraper:
         image_urls = []   
         try:
             with sync_playwright() as playwright:
-                context, browser = self.session_manager.auth._preflight_config_proxyed(playwright)
-                feed = context.request.get(
-                            f'https://i.instagram.com/api/v1/feed/user/{username}/username/',
-                            headers = {"User-Agent": "iphone_ua", "x-ig-app-id": "936619743392459"}
-                        ).json()
+                context, browser = self.session_manager.auth._preflight_config(playwright)
+
+                page = context.new_page()
+                page.goto("https://www.instagram.com/robots.txt", wait_until="commit")
+                # Bypassing Instagram Bot Detection:
+                # Instead of using Playwright's context.request (which gets flagged with a 429),
+                # we open a blank/lightweight page and execute the fetch natively via JavaScript.
+                # This ensures the request carries the exact TLS fingerprint and headers of a real browser tab.
+                try:
+                    result = page.evaluate('''async (username) => {
+                        try {
+                            const res = await fetch(`https://i.instagram.com/api/v1/feed/user/${username}/username/`, {
+                                headers: {
+                                    "x-ig-app-id": "936619743392459"
+                                }
+                            });
+                            return { status: res.status, text: await res.text() };
+                        } catch (e) {
+                            return { error: e.toString() };
+                        }
+                    }''', username)
+                    print(result)
+                    if result.get('status') == 200:
+                        import json
+                        feed = json.loads(result['text'])
+                except Exception as e:
+                    print(f"✗ JavaScript fetch execution failed: {e}")
+                
                 browser.close()
                 if not feed:
                     print(f"✗ Failed to get feed data for {username}")

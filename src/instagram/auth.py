@@ -184,11 +184,38 @@ class SessionManager:
                     raise Exception("Failed to initialize Instagram session")
                 context, browser = self.auth._preflight_config(playwright)
 
-                userid_req = context.request.get(
-                            f'https://i.instagram.com/api/v1/users/web_profile_info/?username={username}',
-                            headers = {"User-Agent": "iphone_ua", "x-ig-app-id": "936619743392459"}
-                        )
-                user_data = userid_req.json().get("data", {}).get('user', {})
+                # Bypassing Instagram Bot Detection:
+                # Instead of using Playwright's context.request (which gets flagged with a 429),
+                # we open a blank/lightweight page and execute the fetch natively via JavaScript.
+                # This ensures the request carries the exact TLS fingerprint and headers of a real browser tab.
+                page = context.new_page()
+                page.goto("https://www.instagram.com/robots.txt", wait_until="commit")
+                
+                user_data = None
+                try:
+                    result = page.evaluate('''async (username) => {
+                        try {
+                            const res = await fetch(`https://i.instagram.com/api/v1/users/web_profile_info/?username=${username}`, {
+                                headers: {
+                                    "x-ig-app-id": "936619743392459"
+                                }
+                            });
+                            return { status: res.status, text: await res.text() };
+                        } catch (e) {
+                            return { error: e.toString() };
+                        }
+                    }''', username)
+                    
+                    if result.get('status') == 200:
+                        import json
+                        response_json = json.loads(result['text'])
+                        user_data = response_json.get("data", {}).get('user', {})
+                    else:
+                        print(f"✗ Failed to fetch profile. Status code: {result.get('status')}")
+                        text_preview = result.get('text', '')[:200].replace('\\n', ' ')
+                        print(f"Response snippet: {text_preview}")
+                except Exception as e:
+                    print(f"✗ JavaScript fetch execution failed: {e}")
 
                 if not user_data:
                     print(f"✗ Failed to get user data for {username}")
