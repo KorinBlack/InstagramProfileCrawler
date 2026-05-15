@@ -406,16 +406,18 @@ class VisualAI:
         if not text:
             return []
         
+        # Remove punctuation and common stop words, then extract unique words as tags
+        text = text.translate(str.maketrans('', '', '.,!?;:'))
         # Simple tag extraction based on common patterns
         words = text.lower().split()
         
         tags = []
         for word in words:
-            if len(word) > 4 and word not in ['the', 'and', 'or', 'but', 'is', 'are']:
+            if len(word) > 4 and word not in ['further', 'consider', 'include', 'avoid', 'elements', 'composition', 'description']:
                 # Check if it might be a tag
                 tags.append(word)
         
-        return list(set(tags))[:10]  # Limit to 10 tags
+        return list(set(tags))[:15]  # Limit to 15 tags
 
 
 class CaptionGenerator:
