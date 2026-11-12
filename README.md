@@ -11,7 +11,7 @@ then review everything in a clean web GUI and export a ZIP ready for training.
 ![Playwright](https://img.shields.io/badge/Playwright-Chromium-2EAD33?logo=playwright&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/GUI-FastAPI-009688?logo=fastapi&logoColor=white)
 ![Local AI](https://img.shields.io/badge/AI-Ollama%20·%20llama.cpp%20·%20Strata-8A2BE2)
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Status](https://img.shields.io/badge/status-alpha-orange.svg)
 
 <img src="docs/screenshots/home.png" alt="Home of the web GUI: setup checklist, latest runs and how the pipeline works" width="900">
@@ -310,7 +310,7 @@ the pictures. This tool is meant for personal research and for building datasets
 
 ## 📄 License
 
-MIT.
+MIT — see [LICENSE](LICENSE).
 
 ## 🙏 Acknowledgments
 
