@@ -3,10 +3,9 @@ Statistics tracking for the application.
 """
 
 import time
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
-from collections import defaultdict
 
 
 @dataclass
@@ -188,7 +187,7 @@ class StatisticsTracker:
         self.finalize()
         
         lines = [
-            f"📊 Overall Statistics",
+            "📊 Overall Statistics",
             f"{'=' * 40}",
             f"Duration: {self.stats.duration:.2f}s",
             f"Images/sec: {self.stats.images_per_second:.2f}",
@@ -196,18 +195,18 @@ class StatisticsTracker:
             f"Total Images: {self.stats.total_images}",
             f"Unique Images: {self.stats.unique_images}",
             "",
-            f"📥 Downloads",
+            "📥 Downloads",
             f"  Total: {self.stats.download_stats.total}",
             f"  Success: {self.stats.download_stats.successful} ({self.stats.download_stats.success_rate:.1f}%)",
             f"  Failed: {self.stats.download_stats.failed}",
             "",
-            f"🖼️ Processing",
+            "🖼️ Processing",
             f"  Total: {self.stats.processing_stats.total}",
             f"  Optimized: {self.stats.processing_stats.optimized}",
             f"  Filtered: {self.stats.processing_stats.filtered}",
             f"  Duplicates: {self.stats.processing_stats.duplicates}",
             "",
-            f"📝 Captions",
+            "📝 Captions",
             f"  Total: {self.stats.caption_stats.total}",
             f"  Success: {self.stats.caption_stats.successful} ({self.stats.caption_stats.success_rate:.1f}%)",
             f"  Failed: {self.stats.caption_stats.failed}",

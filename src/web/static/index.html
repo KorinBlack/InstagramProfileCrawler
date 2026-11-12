@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Profile Crawler</title>
+  <meta name="description" content="Gestione di job, account e configurazioni per creare dataset LoRA da profili Instagram.">
+  <meta name="theme-color" content="#f6f4f3">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='2' y='2' width='20' height='20' rx='6' fill='%23a3324f'/%3E%3Cpath d='M7 8h10M8.5 12h7M10 16h4' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <div class="shell" id="shell">
+    <aside class="sidebar" id="sidebar" aria-label="Navigazione">
+      <a class="brand" href="#/home">
+        <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="1" y="1" width="22" height="22" rx="6" fill="#a3324f"/>
+          <path d="M6.5 8h11M8.5 12h7M10.5 16h3" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span class="brand-name">Profile Crawler</span>
+      </a>
+      <nav class="nav" id="nav"></nav>
+      <div class="sidebar-foot" id="sidebar-foot"></div>
+    </aside>
+
+    <header class="topbar">
+      <button class="menu-btn" id="menu-btn" type="button" aria-label="Apri il menu" aria-expanded="false" aria-controls="sidebar">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 6h14M3 10h14M3 14h14"/></svg>
+      </button>
+      <div class="crumbs" id="crumbs"></div>
+      <div class="topbar-right"><a class="worker" id="worker" href="#/runs"><span class="dot"></span><span class="label-text">Nessuna esecuzione</span></a></div>
+    </header>
+
+    <main class="sheet" id="sheet" tabindex="-1">
+      <div class="view" id="view"></div>
+    </main>
+  </div>
+
+  <dialog id="dialog"></dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

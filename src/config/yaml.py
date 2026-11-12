@@ -2,8 +2,7 @@
 YAML configuration file support.
 """
 
-import os
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from pathlib import Path
 import yaml
 

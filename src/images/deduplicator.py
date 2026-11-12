@@ -168,6 +168,29 @@ class ImageDeduplicator:
         
         return duplicates
     
+    def remove_duplicates(self, directory: str, hash_type: str = "content") -> list:
+        """
+        Delete duplicate images, keeping the first file of each duplicate group.
+
+        Args:
+            directory: Directory to scan
+            hash_type: Type of hash to use
+
+        Returns:
+            List of removed file paths
+        """
+        removed = []
+        for files in self.find_duplicates(directory, hash_type).values():
+            for duplicate in sorted(files)[1:]:
+                try:
+                    os.remove(duplicate)
+                    removed.append(duplicate)
+                except OSError as e:
+                    print(f"⚠ Failed to remove duplicate {duplicate}: {e}")
+
+        print(f"Removed {len(removed)} duplicate images")
+        return removed
+
     def is_duplicate(self, image_path: str, known_hashes: Set[str]) -> bool:
         """
         Check if image is duplicate of known images.

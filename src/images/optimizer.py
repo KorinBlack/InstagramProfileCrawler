@@ -3,13 +3,11 @@ Image optimizer - Processes images for optimal LoRA training.
 """
 
 import os
-from typing import Dict, Any, List, Optional
-from dataclasses import dataclass, field
-from datetime import datetime
+from typing import List
+from dataclasses import dataclass
 from pathlib import Path
-from PIL import Image, ImageOps, ImageFilter
+from PIL import Image, ImageFilter
 import numpy as np
-from io import BytesIO
 
 
 @dataclass

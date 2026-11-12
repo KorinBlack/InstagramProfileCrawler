@@ -4,7 +4,7 @@ Retry handler with exponential backoff.
 
 import time
 import random
-from typing import Callable, Any, Optional, TypeVar
+from typing import Callable, Optional, TypeVar
 from dataclasses import dataclass
 from functools import wraps
 

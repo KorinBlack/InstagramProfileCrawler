@@ -2,18 +2,15 @@
 Image downloader - Downloads images from URLs with proper handling.
 """
 
-import os
 import hashlib
-from typing import Dict, Any, List, Optional, Generator
-from dataclasses import dataclass, field
+from typing import List, Generator
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-from io import BytesIO
 from PIL import Image
-import io
 
 
 @dataclass

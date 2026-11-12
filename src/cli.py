@@ -1,368 +1,157 @@
 """
 CLI module - Command-line interface for the application.
+
+    instagram-crawler <username> [options]      one profile
+    instagram-crawler --batch users.txt         several profiles, one browser
+    instagram-crawler --job "My job"            a job saved from the GUI
+    instagram-crawler gui                       open the web GUI
+
+Settings are resolved as in the GUI: command-line flags -> job -> global (GUI) -> .env -> default.
 """
 
 import argparse
 import sys
-import os
-from typing import List, Optional
-from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-from .instagram.auth import SessionManager
-from .instagram.scraper import InstagramScraper
-from .images.downloader import ImageDownloader
-from .images.optimizer import ImageOptimizer
-from .images.deduplicator import ImageDeduplicator
-from .filtering.visual_ai import VisualAI, CaptionGenerator
-from .config.env import EnvConfig
-from .utils.logger import Logger
-from .utils.stats import StatisticsTracker
+from . import pipeline
+from .settings import SECRET_KEYS, resolve, values
+from .store import Store, parse_usernames
 
 
 def create_parser() -> argparse.ArgumentParser:
-    """Create argument parser."""
     parser = argparse.ArgumentParser(
         description="InstagramProfileCrawler - Create datasets from Instagram profiles",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        epilog="Run 'instagram-crawler gui' for the web interface.",
     )
-    
-    # Positional arguments
-    parser.add_argument(
-        "username",
-        nargs="?",
-        help="Instagram username to scrape"
-    )
-    
-    # Profile options
-    parser.add_argument(
-        "--max-posts",
-        type=int,
-        default=100,
-        help="Maximum number of posts to scrape"
-    )
-    
-    # Output options
-    parser.add_argument(
-        "--output",
-        "-o",
-        type=str,
-        default="./dataset",
-        help="Output directory for downloaded images"
-    )
-    
-    # Processing options
-    parser.add_argument(
-        "--optimize",
-        action="store_true",
-        help="Optimize images for LoRA training"
-    )
-    
-    parser.add_argument(
-        "--deduplicate",
-        action="store_true",
-        help="Remove duplicate images"
-    )
-    
-    # Visual AI options
-    parser.add_argument(
-        "--generate-captions",
-        action="store_true",
-        help="Generate captions using Visual AI"
-    )
-    
-    parser.add_argument(
-        "--caption-format",
-        type=str,
-        choices=["text", "json", "pairs"],
-        default="json",
-        help="Format for caption output"
-    )
-    
-    # Filtering options
-    parser.add_argument(
-        "--filter",
-        action="store_true",
-        help="Filter images using Visual AI"
-    )
-    
-    # Batch options
-    parser.add_argument(
-        "--batch",
-        type=str,
-        help="Batch file with list of usernames (one per line)"
-    )
-    
-    # Verbose options
-    parser.add_argument(
-        "--verbose",
-        "-v",
-        action="store_true",
-        help="Enable verbose output"
-    )
-    
-    parser.add_argument(
-        "--quiet",
-        "-q",
-        action="store_true",
-        help="Minimal output"
-    )
-    
+    parser.add_argument("username", nargs="?", help="Instagram username to scrape")
+
+    parser.add_argument("--batch", type=str, help="File with usernames (one per line)")
+    parser.add_argument("--job", type=str, help="Run a job saved in the GUI (name or id)")
+    parser.add_argument("--account", type=str, help="Account id saved in the GUI (default: .env session)")
+    parser.add_argument("--data-dir", default="data", help="GUI data folder (jobs, accounts, global settings)")
+
+    parser.add_argument("--max-posts", type=int, help="Maximum number of posts (0 = all)")
+    parser.add_argument("--output", "-o", type=str, help="Output directory (one subfolder per profile)")
+    parser.add_argument("--stories", action="store_true", help="Also download current (24h) stories")
+    parser.add_argument("--no-highlights", action="store_true", help="Skip story highlights")
+    parser.add_argument("--full", action="store_true", help="Ignore incremental mode and page through every post")
+    parser.add_argument("--all", action="store_true", dest="process_all",
+                        help="Filter/optimize/caption the whole dataset, not only new images")
+
+    parser.add_argument("--optimize", action="store_true", help="Optimize images for LoRA training")
+    parser.add_argument("--deduplicate", action="store_true", help="Move duplicate images to _rejected/")
+    parser.add_argument("--generate-captions", action="store_true", help="Generate captions using Visual AI")
+    parser.add_argument("--caption-format", choices=["text", "json", "pairs"], help="Format for caption output")
+    parser.add_argument("--engine", choices=["ollama", "llama.cpp", "strata"],
+                        help="Visual AI engine (overrides VISUAL_AI_TYPE from .env)")
+    parser.add_argument("--filter", action="store_true", help="Filter images using Visual AI")
+    parser.add_argument("--show-browser", action="store_true", help="Show the Chromium window")
+
+    parser.add_argument("--verbose", "-v", action="store_true", help="Print the resolved settings")
+    parser.add_argument("--quiet", "-q", action="store_true", help="Minimal output")
     return parser
 
 
-def process_profile(username: str,
-                   max_posts: int,
-                   output_dir: str,
-                   optimize: bool,
-                   deduplicate: bool,
-                   generate_captions: bool,
-                   caption_format: str,
-                   filter_images: bool) -> dict:
-    """
-    Process a single Instagram profile.
-    
-    Args:
-        username: Instagram username
-        max_posts: Maximum posts to scrape
-        output_dir: Output directory
-        optimize: Whether to optimize images
-        deduplicate: Whether to remove duplicates
-        generate_captions: Whether to generate captions
-        caption_format: Format for captions
-        filter_images: Whether to filter images
-        
-    Returns:
-        Dictionary with processing results
-    """
-    logger = Logger("InstagramProfileCrawler")
-    stats = StatisticsTracker()
-    
-    logger.print_header(f"Scraping Profile", f"@{username}")
-    
-    config = EnvConfig()
-    
-    # Initialize components
-    session_manager = SessionManager()
-    scraper = InstagramScraper(session_manager)
-    downloader = ImageDownloader(output_dir)
-    optimizer = ImageOptimizer() if optimize else None
-    deduplicator = ImageDeduplicator() if deduplicate else None
-    
-    use_ollama = config.visual_ai_type == 'ollama'
-    visual_ai = VisualAI(
-        host=config.visual_ai_ollama_host if use_ollama else config.visual_ai_llama_host,
-        model=config.visual_ai_ollama_model if use_ollama else config.visual_ai_llama_model,
-        use_ollama=use_ollama
-    ) if filter_images or generate_captions else None
-    
-    try:
-        # Step 1: Scrape profile
-        profile_data = scraper.scrape_profile(username, max_posts)
-        if not profile_data:
-            return {"success": False, "error": "Failed to scrape profile"}
-        
-        stats.record_profile()
-        # Collect all media items
-        media_items = []
-        for post in profile_data['posts']:
-            media_items.append({
-                'id': post['id'],
-                'type': 'post',
-                'caption': post['caption']
-            })
-        
-        for story in profile_data['stories']:
-            media_items.append({
-                'id': story.get("id"),
-                'title': story.get("title"),
-                'type': 'story',
-                'caption': story.get("caption")
-            })
-        
-        
-        
-        if not media_items:
-            return {"success": False, "error": "No media items found"}
-        
-        # Step 2: Download images
-        all_image_urls = []
-        all_image_urls.extend(profile_data['image_urls'])
-        all_image_urls.extend(profile_data['stories_urls'])
-        stats.record_image(len(all_image_urls))
-        logger.info(f"Downloading {len(all_image_urls)} images...")
-        
-        for result in downloader.download_images_batch(all_image_urls):
-            if result.success:
-                stats.record_download(True, result.size_bytes, result.duration_ms)
-            else:
-                stats.record_download(False, 0, 0)
-        
-        # Step 3: Deduplicate
-        if deduplicate:
-            logger.info("Deduplicating images...")
-            duplicates = deduplicator.find_duplicates(output_dir)
-            stats.record_processing(len(duplicates), is_duplicate=True)
-        
-        # Step 4: Optimize images
-        if optimize:
-            logger.info("Optimizing images...")
-            image_files = list(Path(output_dir).glob("*.jpg")) + list(Path(output_dir).glob("*.jpeg"))
-            if image_files:
-                results = optimizer.optimize_batch([str(f) for f in image_files], output_dir)
-                for result in results:
-                    if result.success:
-                        stats.record_processing(True, optimized=True)
-                    else:
-                        stats.record_processing(False)
-        
-        # Step 5: Filter images
-        if filter_images and visual_ai:
-            logger.info("Filtering images...")
-            config = EnvConfig()
-            image_files = list(Path(output_dir).glob("*.jpg")) + list(Path(output_dir).glob("*.jpeg"))
-            
-            for image_path in image_files:
-                result = visual_ai.filter_image(str(image_path), config.filtering_prompt)
-                if result.success and result.filtered:
-                    stats.record_processing(True, filtered=True)
-                    try:
-                        os.remove(image_path)
-                    except Exception as e:
-                        logger.error(f"Error deleting file {image_path}: {e}")
-                    logger.info(f"  Filtered: {Path(image_path).name}")
-        
-        # Step 6: Generate captions
-        if generate_captions and visual_ai:
-            logger.info("Generating captions...")
-            image_files = list(Path(output_dir).glob("*.jpg")) + list(Path(output_dir).glob("*.jpeg"))
-            
-            if caption_format == "pairs":
-                caption_generator = CaptionGenerator(visual_ai, batch_size=1)
-                caption_results = caption_generator.generate_all([str(f) for f in image_files], output_dir)
-                for _ in caption_results:
-                    stats.record_caption(True)
-            else:
-                # Simple caption generation
-                for image_path in image_files:
-                    result = visual_ai.generate_caption(str(image_path))
-                    if result.success:
-                        stats.record_caption(True)
-                    else:
-                        stats.record_caption(False)
-        
-        # Finalize stats
-        stats.finalize()
-        
-        # Return results
-        return {
-            "success": True,
-            "username": username,
-            "posts": len(profile_data['posts']),
-            "stories": len(profile_data['stories']),
-            "images": len(all_image_urls),
-            "stats": stats.get_summary()
-        }
-        
-    except Exception as e:
-        logger.error(f"Failed to process profile: {e}")
-        return {"success": False, "error": str(e)}
+def cli_overrides(args: argparse.Namespace) -> Dict[str, Any]:
+    """Only flags the user actually passed become overrides."""
+    o: Dict[str, Any] = {}
+    if args.max_posts is not None:
+        o["max_posts"] = args.max_posts
+    if args.output:
+        o["output_dir"] = args.output
+    if args.stories:
+        o["include_stories"] = True
+    if args.no_highlights:
+        o["include_highlights"] = False
+    if args.full:
+        o["incremental"] = False
+    if args.process_all:
+        o["process_scope"] = "all"
+    if args.optimize:
+        o["optimize"] = True
+    if args.deduplicate:
+        o["deduplicate"] = True
+    if args.generate_captions:
+        o["captions_enabled"] = True
+    if args.caption_format:
+        o["caption_format"] = args.caption_format
+    if args.engine:
+        o["engine"] = args.engine
+    if args.filter:
+        o["filter_enabled"] = True
+    if args.show_browser:
+        o["headless"] = False
+    if args.account:
+        o["account"] = args.account
+    return o
 
 
-
-def process_batch(batch_file: str) -> dict:
-    """
-    Process a batch of usernames.
-    
-    Args:
-        batch_file: Path to file with usernames
-        
-    Returns:
-        Dictionary with batch results
-    """
-    logger = Logger("InstagramProfileCrawler")
-    
-    logger.print_header("Batch Processing")
-    
-    try:
-        # Read usernames
-        with open(batch_file, 'r') as f:
-            usernames = [line.strip() for line in f if line.strip()]
-        
-        logger.info(f"Processing {len(usernames)} usernames...")
-        
-        results = []
-        for i, username in enumerate(usernames, 1):
-            logger.print_progress(i, len(usernames), f"Processing @{username}")
-            
-            result = process_profile(
-                username=username,
-                max_posts=100,
-                output_dir="./dataset",
-                optimize=True,
-                deduplicate=True,
-                generate_captions=True,
-                caption_format="json",
-                filter_images=False
-            )
-            
-            results.append(result)
-        
-        # Print summary
-        successful = sum(1 for r in results if r.get("success"))
-        logger.print_table(
-            [{"Status": r.get("success"), "Username": r.get("username"), "Images": r.get("images")} 
-             for r in results],
-            "Batch Results"
-        )
-        
-        return {
-            "total": len(usernames),
-            "successful": successful,
-            "failed": len(usernames) - successful,
-            "results": results
-        }
-        
-    except Exception as e:
-        logger.error(f"Batch processing failed: {e}")
-        return {"success": False, "error": str(e)}
+def print_summary(result: Dict[str, Any]) -> None:
+    for p in result["profiles"]:
+        if p.get("status") == "failed":
+            print(f"\n✗ @{p['username']}: {'; '.join(p.get('errors', []))}")
+            continue
+        print(f"\n✓ @{p['username']} → {p['path']}")
+        print(f"  Found {p['found']} · new {p['downloaded']} · existing {p['existing']} · failed {p['failed']}")
+        print(f"  Duplicates {p['duplicates']} · rejected {p['rejected']} · captions {p['captioned']}")
+        print(f"  In dataset: {p['kept']} images ({p['dataset_captioned']} captioned)")
+        for err in p.get("errors", []):
+            print(f"  ⚠ {err}")
+    if result.get("error"):
+        print(f"\n✗ {result['error']}")
 
 
-def main():
-    """Main entry point."""
-    parser = create_parser()
-    args = parser.parse_args()
-    
-    # Handle batch processing
-    if args.batch:
-        result = process_batch(args.batch)
-        print(result)
+def main(argv: Optional[List[str]] = None) -> None:
+    argv = sys.argv[1:] if argv is None else argv
+    from .utils import safe_console
+    safe_console()
+    if argv[:1] == ["gui"]:
+        from .web.app import main as gui_main
+        gui_main(argv[1:])
         return
-    
-    # Handle single profile
-    if not args.username:
+
+    parser = create_parser()
+    args = parser.parse_args(argv)
+    store = Store(args.data_dir)
+
+    job_overrides: Dict[str, Any] = {}
+    if args.job:
+        try:
+            job = store.find_job(args.job)
+        except KeyError:
+            parser.error(f"job '{args.job}' not found in {args.data_dir}/jobs")
+        usernames = job["usernames"]
+        job_overrides = job.get("overrides", {})
+    elif args.batch:
+        with open(args.batch, encoding="utf-8") as f:
+            usernames = parse_usernames(f.read())
+    elif args.username:
+        usernames = parse_usernames(args.username)
+    else:
         parser.print_help()
         return
-    
-    result = process_profile(
-        username=args.username,
-        max_posts=args.max_posts,
-        output_dir=args.output,
-        optimize=args.optimize,
-        deduplicate=args.deduplicate,
-        generate_captions=args.generate_captions,
-        caption_format=args.caption_format,
-        filter_images=args.filter
-    )
-    
-    if result.get("success"):
-        print(f"\n✓ Successfully processed @{result['username']}")
-        print(f"  Posts: {result['posts']}")
-        print(f"  Stories: {result['stories']}")
-        print(f"  Images: {result['images']}")
-        print(result["stats"])
-    else:
-        print(f"\n✗ Failed to process @{args.username}")
-        print(f"  Error: {result.get('error')}")
+
+    try:
+        resolved = resolve(store.global_overrides(), {**job_overrides, **cli_overrides(args)})
+        settings = values(resolved)
+        session_id = store.session_for(settings["account"])
+    except ValueError as e:
+        parser.error(str(e))
+
+    if not session_id:
+        parser.error("no Instagram session: set INSTAGRAM_SESSION_ID in .env or add an account in the GUI")
+
+    if args.verbose:
+        for key, item in resolved.items():
+            if key in SECRET_KEYS:
+                print(f"  {key} = {'<set>' if item['value'] else '<not set>'}  ({item['source']})")
+            elif key not in ("system_prompt", "caption_prompt", "negative_prompt"):
+                print(f"  {key} = {item['value']!r}  ({item['source']})")
+
+    log = (lambda _m: None) if args.quiet else print
+    result = pipeline.run(settings, usernames, session_id, pipeline.RunContext(log=log))
+    print_summary(result)
+    if result["status"] in ("failed", "cancelled"):
         sys.exit(1)
 
 

@@ -23,11 +23,13 @@ def load_env() -> dict:
         'INSTAGRAM_SESSION_ID': '',
         
         # Visual AI
-        'VISUAL_AI_TYPE': 'ollama',  # ollama or llama.cpp
+        'VISUAL_AI_TYPE': 'ollama',  # ollama, llama.cpp or strata
         'VISUAL_AI_OLLAMA_HOST': 'http://localhost:11434',
         'VISUAL_AI_OLLAMA_MODEL': 'llava',
         'VISUAL_AI_LLAMA_HOST': 'http://localhost:8080',
         'VISUAL_AI_LLAMA_MODEL': 'gemma4',
+        'VISUAL_AI_STRATA_HOST': 'http://127.0.0.1:8080',
+        'VISUAL_AI_STRATA_MODEL': 'qwen3.8-flash-next',
         
         # Processing
         'OUTPUT_DIR': './dataset',
@@ -140,7 +142,26 @@ class EnvConfig:
     def visual_ai_llama_model(self) -> str:
         """llama.cpp model name."""
         return self._env.get('VISUAL_AI_LLAMA_MODEL', 'gemma4')
-    
+
+    @property
+    def visual_ai_strata_host(self) -> str:
+        """Strata API host (OpenAI-compatible, without /v1)."""
+        return self._env.get('VISUAL_AI_STRATA_HOST', 'http://127.0.0.1:8080')
+
+    @property
+    def visual_ai_strata_model(self) -> str:
+        """Strata model name."""
+        return self._env.get('VISUAL_AI_STRATA_MODEL', 'qwen3.8-flash-next')
+
+    def visual_ai_endpoint(self, engine: Optional[str] = None) -> tuple:
+        """Return (engine, host, model) for `engine` or, if None, the configured VISUAL_AI_TYPE."""
+        engine = engine or self.visual_ai_type
+        if engine == 'strata':
+            return engine, self.visual_ai_strata_host, self.visual_ai_strata_model
+        if engine == 'llama.cpp':
+            return engine, self.visual_ai_llama_host, self.visual_ai_llama_model
+        return engine, self.visual_ai_ollama_host, self.visual_ai_ollama_model
+
     @property
     def output_dir(self) -> str:
         """Output directory for downloaded images."""
@@ -203,7 +224,7 @@ class EnvConfig:
         if not self.instagram_session_id:
             errors.append("INSTAGRAM_SESSION_ID is not set")
         
-        if self.visual_ai_type not in ['ollama', 'llama.cpp']:
+        if self.visual_ai_type not in ['ollama', 'llama.cpp', 'strata']:
             errors.append(f"Invalid VISUAL_AI_TYPE: {self.visual_ai_type}")  
         
         if not self.output_dir:

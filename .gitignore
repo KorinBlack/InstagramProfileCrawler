@@ -184,3 +184,7 @@ cython_debug/
 example_dataset/*
 test_dataset/*
 test_full_workflow.py
+
+# GUI data: jobs, accounts (Instagram sessions!), run logs
+data/
+dataset/

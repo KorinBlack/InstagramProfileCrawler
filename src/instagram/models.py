@@ -3,8 +3,7 @@ Data models for Instagram entities.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional
-from datetime import datetime
+from typing import Dict, Any, List
 
 
 @dataclass

@@ -2,12 +2,9 @@
 Logging module with rich formatting.
 """
 
-import sys
-from typing import Optional
 from datetime import datetime
 from rich.console import Console
 from rich.table import Table
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 from rich.panel import Panel
 from rich.text import Text
 from rich import print as rich_print
